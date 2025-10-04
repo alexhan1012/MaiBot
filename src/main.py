@@ -59,34 +59,34 @@ class MainSystem:
         """初始化其他组件"""
         init_start_time = time.time()
 
-        # 添加在线时间统计任务
+        # 添加在线时间统计任务（记录机器人的在线运行时间,每60秒向数据库写入一次时间戳，用于统计机器人总运行时长）
         await async_task_manager.add_task(OnlineTimeRecordTask())
 
-        # 添加统计信息输出任务
+        # 添加统计信息输出任务（ 定期生成运行统计报告，每5分钟生成HTML格式的统计报告）
         await async_task_manager.add_task(StatisticOutputTask())
 
-        # 添加遥测心跳任务
+        # 添加遥测心跳任务（向远程服务器发送心跳包，监控系统健康状态。定期上报系统运行状态，便于远程监控和故障诊断）
         await async_task_manager.add_task(TelemetryHeartBeatTask())
 
         # 启动API服务器
         # start_api_server()
         # logger.info("API服务器启动成功")
 
-        # 启动LPMM
+        # 启动LPMM（启动Large Persona Memory Model，机器人的知识库系统）
         lpmm_start_up()
 
-        # 加载所有actions，包括默认的和插件的
+        # 加载所有actions，包括默认的和插件的（扫描并加载所有插件，包括内置和自定义插件）
         plugin_manager.load_all_plugins()
 
-        # 初始化表情管理器
+        # 初始化表情管理器（管理表情包识别、生成和发送）
         get_emoji_manager().initialize()
         logger.info("表情包管理器初始化成功")
 
-        # 启动情绪管理器
+        # 启动情绪管理器（管理机器人的情绪状态和个性表现）
         await mood_manager.start()
         logger.info("情绪管理器初始化成功")
 
-        # 初始化聊天管理器
+        # 初始化聊天管理器（管理所有聊天流和消息上下文）
         await get_chat_manager()._initialize()
         asyncio.create_task(get_chat_manager()._auto_save_task())
 
@@ -106,9 +106,9 @@ class MainSystem:
         self.app.register_message_handler(chat_bot.message_process)
         self.app.register_custom_message_handler("message_id_echo", chat_bot.echo_message_process)
 
-        await check_and_run_migrations()
+        await check_and_run_migrations() # 检查并执行数据库结构更新
 
-        # 触发 ON_START 事件
+        # 触发 ON_START 事件 （触发插件系统的ON_START事件：通知所有插件系统已启动完成，允许插件执行启动后的初始化逻辑。）
         from src.plugin_system.core.events_manager import events_manager
         from src.plugin_system.base.component_types import EventType
 

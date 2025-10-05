@@ -221,10 +221,12 @@ class ChatBot:
 
             platform = message_data["message_info"].get("platform")
 
+            # 平台特殊处理
             if platform == "amaidesu_default":
                 await self.do_s4u(message_data)
                 return
 
+            # 将用户ID和群组ID统一转换为字符串格式，避免类型不一致问题
             if message_data["message_info"].get("group_info") is not None:
                 message_data["message_info"]["group_info"]["group_id"] = str(
                     message_data["message_info"]["group_info"]["group_id"]
@@ -235,14 +237,17 @@ class ChatBot:
                 )
             # print(message_data)
             # logger.debug(str(message_data))
+
+            # 创建消息对象
             message = MessageRecv(message_data)
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
 
+            # 触发预处理事件，允许插件在早期拦截或修改消息
             continue_flag, modified_message = await events_manager.handle_mai_events(
                 EventType.ON_MESSAGE_PRE_PROCESS, message
             )
-            if not continue_flag:
+            if not continue_flag: # 如果插件要求停止处理，直接返回
                 return
             if modified_message and modified_message._modify_flags.modify_message_segments:
                 message.message_segment = Seg(type="seglist", data=modified_message.message_segments)
@@ -251,14 +256,16 @@ class ChatBot:
                 # return
                 pass
 
+            # 注册消息到聊天管理器
             get_chat_manager().register_message(message)
 
+            # 获取或创建聊天流
             chat = await get_chat_manager().get_or_create_stream(
                 platform=message.message_info.platform,  # type: ignore
                 user_info=user_info,  # type: ignore
                 group_info=group_info,
             )
-
+            # 关联消息与聊天流
             message.update_chat_stream(chat)
 
             # 处理消息内容，生成纯文本
@@ -291,7 +298,7 @@ class ChatBot:
             if modified_message and modified_message._modify_flags.modify_plain_text:
                 message.processed_plain_text = modified_message.plain_text
 
-            # 确认从接口发来的message是否有自定义的prompt模板信息
+            # 确认从接口发来的message是否有自定义的prompt模板信息(普通用户聊天时，这个字段通常为空，AI使用默认模式回复。只有在特殊场景（API调用、插件处理、管理操作）时，才会动态设置模板信息。)
             if message.message_info.template_info and not message.message_info.template_info.template_default:
                 template_group_name: Optional[str] = message.message_info.template_info.template_name  # type: ignore
                 template_items = message.message_info.template_info.template_items

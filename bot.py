@@ -30,16 +30,17 @@ logger = get_logger("main")
 
 install(extra_lines=3)
 
-# 设置工作目录为脚本所在目录
-script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
-logger.info(f"已设置工作目录为: {script_dir}")
+# 设置工作目录为脚本所在目录（确保相对路径引用正确，无论从哪里启动都能找到配置文件）
+script_dir = os.path.dirname(os.path.abspath(__file__)) # 获取bot.py所在目录
+os.chdir(script_dir) # 切换到该目录
+logger.info(f"已设置工作目录为: {script_dir}") # 记录日志
 
 
-confirm_logger = get_logger("confirm")
-# 获取没有加载env时的环境变量
+confirm_logger = get_logger("confirm") # 专用于协议确认的日志器
+# 获取没有加载env时的环境变量（保存当前环境变量快照）
 env_mask = {key: os.getenv(key) for key in os.environ}
 
+# 后续变量初始化为None，准备在主程序中赋值
 uvicorn_server = None
 driver = None
 app = None
@@ -47,7 +48,7 @@ loop = None
 
 
 def easter_egg():
-    # 彩蛋
+    # 彩蛋（显示彩色文本，纯粹为了程序启动时的趣味性）
     from colorama import init, Fore
 
     init()
@@ -60,16 +61,17 @@ def easter_egg():
 
 
 async def graceful_shutdown():  # sourcery skip: use-named-expression
+    """负责系统的优雅退出,确保Ctrl+C时系统能正确清理资源，不留垃圾进程"""
     try:
         logger.info("正在优雅关闭麦麦...")
 
         from src.plugin_system.core.events_manager import events_manager
         from src.plugin_system.base.component_types import EventType
 
-        # 触发 ON_STOP 事件
+        # 触发 ON_STOP 事件（触发所有插件的停止事件）
         await events_manager.handle_mai_events(event_type=EventType.ON_STOP)
 
-        # 停止所有异步任务
+        # 停止所有异步任务（停止异步任务管理器中的所有任务）
         await async_task_manager.stop_and_wait_all_tasks()
 
         # 获取所有剩余任务，排除当前任务
@@ -113,7 +115,7 @@ def _calculate_file_hash(file_path: Path, file_type: str) -> str:
 
 
 def _check_agreement_status(file_hash: str, confirm_file: Path, env_var: str) -> tuple[bool, bool]:
-    """检查协议确认状态
+    """检查协议确认状态(检查用户是否已同意当前版本协议)
 
     Returns:
         tuple[bool, bool]: (已确认, 未更新)
@@ -211,7 +213,7 @@ if __name__ == "__main__":
             main_tasks = loop.create_task(main_system.schedule_tasks())
             loop.run_until_complete(main_tasks)
 
-        except KeyboardInterrupt:
+        except KeyboardInterrupt: # 用户按Ctrl+C
             # loop.run_until_complete(get_global_api().stop())
             logger.warning("收到中断信号，正在优雅关闭...")
             if loop and not loop.is_closed():
